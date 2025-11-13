@@ -1,0 +1,38 @@
+# .github/workflows/reservation.yml
+name: CrossHero reservation bot
+
+on:
+  schedule:
+    # 18:50 UTC ≈ 19:50 Europe/Madrid (en horario de invierno).
+    # En verano tendrás que ajustar o lanzar antes y que el código espere.
+    - cron: "50 18 * * *"
+  workflow_dispatch: {}  # para lanzarlo a mano si quieres
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r reservation_bot/requirements.txt
+
+      - name: Run reservation bot
+        env:
+          SESSION_COOKIE: ${{ secrets.SESSION_COOKIE }}
+          SESSION_COOKIE_NAME: "_crosshero_session"
+          BASE_URL: "https://crosshero.com"
+          PROGRAM_ID_MTT: "5a6f2ebea8efdc0006f8656a"
+          PROGRAM_ID_WED: "5c3cce31ab433d003b87a6f9"
+          TARGET_HOUR: "20"
+          TARGET_MINUTE: "0"
+        run: |
+          python -m reservation_bot.main
