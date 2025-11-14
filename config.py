@@ -42,4 +42,4 @@ TARGET_TIME_STR = f"{TARGET_HOUR:02d}:{TARGET_MINUTE:02d}"
 
 # Días de semana en los que quieres clases:
 # 0 = lunes, 1 = martes, 2 = miércoles, 3 = jueves
-TARGET_CLASS_WEEKDAYS = {0, 1, 2, 3}
+TARGET_CLASS_WEEKDAYS = {0, 1, 2, 3, 4}
