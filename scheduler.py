@@ -48,7 +48,7 @@ def wait_until_target_time():
         # Salimos sin esperar para evitar jobs largos en CI.
         return
 
-    remaining = delta
+    '''remaining = delta
     print(f"[INFO] Esperando {remaining:.1f} segundos hasta la hora objetivo ({target}). Heartbeat cada {HEARTBEAT}s.")
     # Espera en trozos pequeños e imprime heartbeats para que CI muestre actividad
     while remaining > 0:
@@ -59,6 +59,6 @@ def wait_until_target_time():
         except KeyboardInterrupt:
             print("[WARN] Sleep interrumpido por KeyboardInterrupt, continuando.")
             return
-        remaining -= sleep_for
+        remaining -= sleep_for'''
 
     print("[INFO] Hora objetivo alcanzada, continuando con el flujo de reserva.")
