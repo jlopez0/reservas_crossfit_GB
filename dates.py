@@ -22,7 +22,7 @@ def compute_target_date(today: Optional[date] = None) -> Optional[date]:
     if today is None:
         today = today_madrid()
 
-    target_date = today + timedelta(days=0)
+    target_date = today + timedelta(days=3)
     if target_date.weekday() in TARGET_CLASS_WEEKDAYS:
         return target_date
     return None
