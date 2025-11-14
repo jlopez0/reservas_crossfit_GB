@@ -1,6 +1,7 @@
 # reservation_bot/main.py
 from datetime import date
 import time as time_module
+from typing import Optional
 
 from dates import today_madrid, compute_target_date
 from crosshero_client import (
@@ -12,6 +13,46 @@ from crosshero_client import (
 )
 from scheduler import wait_until_target_time
 from config import TARGET_TIME_STR, get_program_id_for_weekday
+
+
+def analyze_reservation_response(response_text: str, status_code: int) -> tuple[bool, str]:
+    """
+    Analiza la respuesta del servidor para determinar si la reserva fue exitosa.
+    
+    Returns:
+        tuple[bool, str]: (is_success, message)
+    """
+    text_lower = response_text.lower()
+    
+    # Indicadores de éxito específicos de CrossHero
+    success_indicators = [
+        "éxito", "success", "reserva realizada", "reservation confirmed",
+        "reserva confirmada", "booking confirmed", "tu reserva ha sido",
+        "reserva completada", "booking successful"
+    ]
+    
+    # Indicadores de error específicos
+    error_indicators = [
+        "error", "no se pudo", "failed", "unable", "problema",
+        "no disponible", "not available", "ya reservado", "already booked",
+        "cupo completo", "full capacity", "sin disponibilidad"
+    ]
+    
+    has_success = any(indicator in text_lower for indicator in success_indicators)
+    has_error = any(indicator in text_lower for indicator in error_indicators)
+    
+    # Priorizar éxito sobre error - si hay indicadores de éxito, es éxito
+    if has_success:
+        if has_error:
+            return True, "Reserva confirmada - encontrados indicadores de éxito (ignorando menciones de 'error' en el HTML)"
+        else:
+            return True, "Reserva confirmada - encontrados indicadores de éxito"
+    elif has_error:
+        return False, "Error detectado en la respuesta"
+    elif 200 <= status_code < 400:
+        return None, "Status HTTP exitoso pero sin indicadores claros de éxito/error"
+    else:
+        return False, f"Status HTTP de error: {status_code}"
 
 
 def fetch_class_id_with_retries(session, target_date: date, program_id: str,
@@ -62,7 +103,7 @@ def main():
     today = today_madrid()
     print(f"[INFO] Hoy (Madrid): {today}")
 
-    target_date: date | None = compute_target_date(today)
+    target_date: Optional[date] = compute_target_date(today)
     if target_date is None:
         print("[INFO] Hoy no toca reservar (el día objetivo no es uno de los días configurados).")
         return
@@ -99,28 +140,61 @@ def main():
         return
 
     status = resp.status_code
-    body_preview = resp.text[:500]
 
     print(f"[DEBUG] Status HTTP de la reserva: {status}")
     print(f"[DEBUG] URL final: {resp.url}")
     
-    if 200 <= status < 400:
-        print(f"[SUCCESS] Reserva lanzada con éxito aparente para fecha {target_date} "
-              f"a las {TARGET_TIME_STR}. Status HTTP: {status}")
-        print("[DEBUG] Respuesta (primeros 500 chars):")
-        print(body_preview)
+    # Analizar el contenido de la respuesta para determinar éxito real
+    is_success, message = analyze_reservation_response(resp.text, status)
+    
+    # Solo mostrar contenido útil de la respuesta
+    response_lower = resp.text.lower()
+    relevant_content = []
+    
+    # Buscar líneas que contengan palabras clave relevantes
+    for line in resp.text.split('\n'):
+        line_lower = line.strip().lower()
+        if any(keyword in line_lower for keyword in ['éxito', 'success', 'reserva', 'error', 'problema', 'confirmad']):
+            if line.strip() and not line.strip().startswith('<script') and not line.strip().startswith('<!--'):
+                relevant_content.append(line.strip()[:100])  # Máximo 100 chars por línea
+    
+    if relevant_content:
+        print("[DEBUG] Contenido relevante de la respuesta:")
+        for content in relevant_content[:5]:  # Máximo 5 líneas relevantes
+            print(f"  {content}")
+    else:
+        print("[DEBUG] No se encontró contenido textual relevante en la respuesta")
+    
+    if is_success is True:
+        print("[SUCCESS] ✅ ¡RESERVA CONFIRMADA!")
+        print(f"[SUCCESS] {message}")
+        print(f"[SUCCESS] Reserva exitosa para fecha {target_date} a las {TARGET_TIME_STR}")
+        print("[DEBUG] ✓ La respuesta contiene palabras de éxito")
         
-        # Buscar indicadores de éxito/error en el HTML
+        # Solo mostrar logs adicionales si es útil para debugging
+        if "reserva" in resp.text.lower() or "reservation" in resp.text.lower():
+            print("[DEBUG] ✓ La respuesta menciona 'reserva'")
+        
+    elif is_success is False:
+        print("[ERROR] ❌ RESERVA FALLIDA")
+        print(f"[ERROR] {message}")
+        if 200 <= status < 400:
+            print("[ERROR] Aunque el status HTTP sea exitoso, el contenido indica fallo")
+            
+        # Mostrar logs adicionales para debugging de errores
+        if "error" in resp.text.lower():
+            print("[DEBUG] La respuesta contiene 'error'")
+            
+    else:  # is_success is None
+        print("[WARN] ⚠️ RESULTADO INCIERTO")
+        print(f"[WARN] {message}")
+        print("[WARN] Revisa manualmente si la reserva fue exitosa")
+        
+        # Log adicional para debugging de casos inciertos
         if "reserva" in resp.text.lower() or "reservation" in resp.text.lower():
             print("[DEBUG] ✓ La respuesta menciona 'reserva'")
         if "error" in resp.text.lower():
             print("[WARN] ⚠ La respuesta contiene 'error'")
-        if "éxito" in resp.text.lower() or "success" in resp.text.lower():
-            print("[DEBUG] ✓ La respuesta contiene palabras de éxito")
-    else:
-        print(f"[ERROR] La reserva devolvió un status HTTP no exitoso: {status}")
-        print("[ERROR] Respuesta (primeros 500 chars):")
-        print(body_preview)
 
 
 if __name__ == "__main__":

@@ -72,11 +72,6 @@ def fetch_classes_html_for_date(
     print(f"[DEBUG] Status clases: {resp.status_code}")
     print(f"[DEBUG] Longitud HTML: {len(resp.text)} caracteres")
     
-    # Guardar HTML para debug (útil para inspección manual)
-    with open("debug_classes.html", "w", encoding="utf-8") as f:
-        f.write(resp.text)
-    print(f"[DEBUG] HTML guardado en debug_classes.html")
-    
     resp.raise_for_status()
     return resp.text
 
@@ -159,7 +154,7 @@ def reserve_class_with_retries(
         "class_reservation[single_class_id]": class_id,
     }
 
-    for attempt in range(1, max_attempts + 3):
+    for attempt in range(1, max_attempts + 1):
         print(f"[INFO] POST intento {attempt}/{max_attempts} {url}")
         print(f"[DEBUG] Datos enviados: {data}")
         print(f"[DEBUG] Timeout configurado: {timeout}s")

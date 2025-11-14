@@ -1,5 +1,6 @@
 # reservation_bot/dates.py
 from datetime import datetime, date, timedelta
+from typing import Optional
 
 from config import TZ_MADRID, TARGET_CLASS_WEEKDAYS
 
@@ -10,7 +11,7 @@ def today_madrid() -> date:
     return now.date()
 
 
-def compute_target_date(today: date | None = None) -> date | None:
+def compute_target_date(today: Optional[date] = None) -> Optional[date]:
     """
     Calcula la fecha para la que se debe reservar:
     - Día objetivo = hoy + 3 días.
